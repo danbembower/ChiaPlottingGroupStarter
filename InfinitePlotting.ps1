@@ -9,23 +9,30 @@
         Add Checking into log files to determine when to start instead of timing
 #>
 
-
+""
+""
+""
+""
+""
+""
+""
+""
+$host.ui.RawUI.WindowTitle = 'Infinite Plotter'
 
 <# Ask for input and setting defaults #>
-    #[int]$NumGroups = Read-Host "How many Groups of parallel plots? (Default 2)"; if($NumGroups -eq 0){$NumGroups = 2}
-
     [int]$InitialDelay = Read-Host "How many minutes to delay the first group? (Default 0)"; if($InitialDelay -eq 0){$InitialDelay = 1}else{$InitialDelay=$InitialDelay*60}
     
-    [double]$CompletionTime = Read-Host "About how many minutes to complete a parallel group? (Default $(8*60))"; if($CompletionTime -eq 0){$CompletionTime = 8*60*60}else{$CompletionTime = $CompletionTime*60}
+    [double]$CompletionTime = Read-Host "About how many minutes to complete a parallel group? (Default $(7.5*60))"; if($CompletionTime -eq 0){$CompletionTime = 7.5*60*60}else{$CompletionTime = $CompletionTime*60}
 
-    [int]$OffsetGroup = Read-Host "How many minutes to offset each group? (Default is half: $($CompletionTime/120))";if($OffsetGroup -eq 0){$OffsetGroup = $CompletionTime/2}
+    [int]$OffsetGroup = Read-Host "How many minutes to offset each group? (Default is half: $($CompletionTime/120))";if($OffsetGroup -eq 0){$OffsetGroup = $CompletionTime/2}else{$OffsetGroup=$OffsetGroup*60}
 
     [int]$FirstGroupNumber = Read-host "Enter the number to call the first group (Default 1)";if($FirstGroupNumber -eq 0){$FirstGroupNumber = 1}
 
     [int]$NumPlotsPerGroup = Read-Host "How many parallel plots (series)? (Default 3)"; if($NumPlotsPerGroup -eq 0){$NumPlotsPerGroup = 3}
-    
-    if($NumplotsPerGroup -eq 1){}else{[int]$OffsetParallel = Read-Host "How many minutes to offset each parallel plot? (Default is 15 min)"; if($OffsetParallel -eq 0){$OffsetParallel = 15*60}else{$OffsetParallel=$OffsetParallel*60}}
-  
+        
+    if($NumplotsPerGroup -eq 1){}else{[int]$OffsetParallel = Read-Host "How many minutes to offset each parallel plot? (Default is 12 min)";
+        if($OffsetParallel -eq 0){$OffsetParallel = 12*60}else{$OffsetParallel=$OffsetParallel*60}}
+
     [int]$k = Read-Host "What k level? ('-k', Default 32)"; if($k -eq 0){$k = 32}
 
     [string]$TempFolder = Read-Host "What temp folder to use? ('-t', Default is A:\)"; if([string]::IsNullOrEmpty($TempFolder)){$TempFolder = "A:\"}        
@@ -36,24 +43,27 @@
     $DestFolder = @("Set unique drive letter")
     for ($i=1;$i -le $NumPlotsPerGroup;$i++){
         $SeriesLetter += $([char](64+$i))
-        $DestFolder += Read-host "What destination folder for plots from series $($SeriesLetter.getvalue($i))? ('-d', Default is B:\)"; if([string]::IsNullOrEmpty($DestFolder[$i])){$DestFolder[$i]="B:\"}
+        $DestFolder += Read-host "What destination folder for plots from series $($SeriesLetter.getvalue($i))? ('-d', Default is D:\ChiaFinalPlots)"; if([string]::IsNullOrEmpty($DestFolder[$i])){$DestFolder[$i]="D:\ChiaFinalPlots"}
     } 
 
 <#Print Information in PowerShell Window#>
+    ""
+    "Log files placed in $($logpath1)"
+    for ($i=1;$i -le $NumplotsPerGroup;$i++){
+        $message = "Final Plots for Series " + $SeriesLetter[$i] + " are located at " + $DestFolder[$i]
+        $message
+    }
 ""
-""
-"Plotting $($NumGroups) Groups of $($NumPlotsPerGroup) Plots in each group, repeating every $($OffsetGroup) seconds. "
-"Log files placed in $($logpath1)"
-for ($i=1;$i -le $NumplotsPerGroup;$i++){
-    $message = "Final Plots for Series " + $SeriesLetter[$i] + " are located at " + $DestFolder[$i]
-    $message
-}
-$confirmation = Read-Host "Ready? [y/n]"
-while($confirmation -ne "y"){
-    if ($confirmation -eq 'n') {exit}
+"Plotting $($NumPlotsPerGroup) Series of parallel-ish plots, $($OffsetParallel/60) minutes apart, repeating every $($OffsetGroup/3600) hours. "
+    ""
     $confirmation = Read-Host "Ready? [y/n]"
-}
-"Scheduling indefinitely. Press Ctrl + C to end process."
+    while($confirmation -ne "y"){
+        if ($confirmation -eq 'n') {exit}
+        $confirmation = Read-Host "Ready? [y/n]"
+    }
+    ""
+    "Scheduling indefinitely. Press Ctrl + C to end process."
+    ""
 
 
 
@@ -94,8 +104,21 @@ for ($group = $FirstGroupNumber; $group -le 999999999; $group++){   #  For each 
         $windowtitle = "$($datestamp) $($plotname) - Active Plotter"
         $destinationfolder = $DestFolder[$plot]        
         
+       
         <# This is the main thing starting plotting #>
-        $chiaProcess = Start-Process -FilePath powershell -ArgumentList "-noexit 
+        <#New>
+            $chiaProcess = Start-process chia.exe -ArgumentList "plots create -k $($k) -n 1 -b 4000 -r 2 -u 128 -t $($temppath) -d $($DestinationFolder)" -PassThru -RedirectStandardOutput $logpath -NoNewWindow
+            $ChiaProcess.i = "This is my window title"
+            $chiaProcess.Id
+
+            Start-Sleep -Seconds 5
+            stop-process -id $chiaprocess.Id
+            "Stopped!"
+            exit
+        <#/New>
+
+        <# Old#>
+        $chiaProcess = Start-Process -FilePath powershell -PassThru -ArgumentList "-noExit
                         `$host.ui.RawUI.WindowTitle = 'Plotting $($windowtitle)'
                         ''
                         '$($plotname)'
@@ -107,7 +130,11 @@ for ($group = $FirstGroupNumber; $group -le 999999999; $group++){   #  For each 
                         'Started on $($pleasantdate)'
                         ''
                         chia.exe plots create -k $($k) -n 1 -b 4000 -r 2 -u 128 -t $($temppath) -d $($DestinationFolder) | Tee-Object -FilePath $($logpath)
+                        start-sleep -seconds 60
+                        Exit
                         "
+        <#/Old#>
+
         <# Delay Parallel Series until last Series #>
         if ($plot -ne $NumPlotsPerGroup){
             for($secondsleft = $OffsetParallel; $secondsleft -gt 0){
