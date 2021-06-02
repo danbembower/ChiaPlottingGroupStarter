@@ -1,7 +1,7 @@
 ﻿
 <# Description
     .Description
-        This is my basic plotting plan
+        This is my basic plotting plan. No Frills. 
 
     To Do Items
         Add validation to folders
@@ -20,24 +20,24 @@
 $host.ui.RawUI.WindowTitle = 'Infinite Plotter'
 
 <# Ask for input and setting defaults #>
-    [int]$InitialDelay = Read-Host "How many minutes to delay the first group? (Default 0)"; if($InitialDelay -eq 0){$InitialDelay = 1}else{$InitialDelay=$InitialDelay*60}
+    [int]$InitialDelay = Read-Host "How many minutes to delay the first group? (Default 0)"; if(!$InitialDelay){$InitialDelay = 1}else{$InitialDelay=$InitialDelay*60}
     
-    [double]$CompletionTime = Read-Host "About how many minutes to complete a parallel group? (Default $(7.5*60))"; if($CompletionTime -eq 0){$CompletionTime = 7.5*60*60}else{$CompletionTime = $CompletionTime*60}
+    [double]$CompletionTime = Read-Host "About how many minutes to complete a parallel group? (Default $(8*60))"; if(!$CompletionTime){$CompletionTime = 8*60*60}else{$CompletionTime = $CompletionTime*60}
 
-    [int]$OffsetGroup = Read-Host "How many minutes to offset each group? (Default is half: $($CompletionTime/120))";if($OffsetGroup -eq 0){$OffsetGroup = $CompletionTime/2}else{$OffsetGroup=$OffsetGroup*60}
+    [int]$OffsetGroup = Read-Host "How many minutes to offset each group? (Default is half: $($CompletionTime/120))";if(!$OffsetGroup){$OffsetGroup = $CompletionTime/2}else{$OffsetGroup=$OffsetGroup*60}
 
-    [int]$FirstGroupNumber = Read-host "Enter the number to call the first group (Default 1)";if($FirstGroupNumber -eq 0){$FirstGroupNumber = 1}
+    [int]$FirstGroupNumber = Read-host "Enter the number to call the first group (Default 1)";if(!$FirstGroupNumber){$FirstGroupNumber = 1}
 
-    [int]$NumPlotsPerGroup = Read-Host "How many parallel plots (series)? (Default 3)"; if($NumPlotsPerGroup -eq 0){$NumPlotsPerGroup = 3}
+    [int]$NumPlotsPerGroup = Read-Host "How many parallel plots (series)? (Default 3)"; if(!$NumPlotsPerGroup){$NumPlotsPerGroup = 3}
         
     if($NumplotsPerGroup -eq 1){}else{[int]$OffsetParallel = Read-Host "How many minutes to offset each parallel plot? (Default is 12 min)";
-        if($OffsetParallel -eq 0){$OffsetParallel = 12*60}else{$OffsetParallel=$OffsetParallel*60}}
+        if(!$OffsetParallel){$OffsetParallel = 12*60}else{$OffsetParallel=$OffsetParallel*60}}
 
-    [int]$k = Read-Host "What k level? ('-k', Default 32)"; if($k -eq 0){$k = 32}
+    [int]$k = Read-Host "What k level? ('-k', Default 32)"; if(!$k){$k = 32}
 
-    [string]$TempFolder = Read-Host "What temp folder to use? ('-t', Default is A:\)"; if([string]::IsNullOrEmpty($TempFolder)){$TempFolder = "A:\"}        
+    [string]$TempFolder = Read-Host "What temp folder to use? ('-t', Default is A:\)"; if(!$TempFolder){$TempFolder = "A:\"}        
     
-    [string]$logpath1 = Read-Host "What folder for logs? (Default is C:\ChiaStuff\PlottingLogs\)"; if([string]::IsNullOrEmpty($logpath1)){$logpath1 = "C:\ChiaStuff\PlottingLogs\"}
+    [string]$logfolder = Read-Host "What folder for logs? (Default is C:\ChiaStuff\PlottingLogs)"; if(!$logfolder){$logfolder = "C:\ChiaStuff\PlottingLogs"}
 
     $SeriesLetter = @("Get Series Letter")
     $DestFolder = @("Set unique drive letter")
@@ -48,7 +48,7 @@ $host.ui.RawUI.WindowTitle = 'Infinite Plotter'
 
 <#Print Information in PowerShell Window#>
     ""
-    "Log files placed in $($logpath1)"
+    "Log files placed in $($logfolder)"
     for ($i=1;$i -le $NumplotsPerGroup;$i++){
         $message = "Final Plots for Series " + $SeriesLetter[$i] + " are located at " + $DestFolder[$i]
         $message
@@ -65,8 +65,7 @@ $host.ui.RawUI.WindowTitle = 'Infinite Plotter'
     "Scheduling indefinitely. Press Ctrl + C to end process."
     ""
 
-
-
+    
 <# Main Plotting Loop #>
 for ($group = $FirstGroupNumber; $group -le 999999999; $group++){   #  For each Group
     
@@ -97,16 +96,20 @@ for ($group = $FirstGroupNumber; $group -le 999999999; $group++){   #  For each 
         
         <# Get Nice Names #>
         $datestamp = get-date -format yyyy-MM-dd-hh-mm
-        $pleasantdate = get-date -format "dddd, hh:mm tt"
+        $pleasantdate = get-date -format "dddd, MMM dd, hh:mm tt, yyyy"
         $plotname = "Group-$($group)-Series-$($SeriesLetter[$plot])"
-        $temppath = "$($TempFolder)$($datestamp)-$($plotname)-Temp\"
-        $logpath = "$($logpath1)$($datestamp)-$($plotname).log"
-        $windowtitle = "$($datestamp) $($plotname) - Active Plotter"
+        $plotid = "$($datestamp)-$($plotname)"
+        $temppath = "$($TempFolder)$($plotid)-Temp\"
+        $logpath = "$($logfolder)\$($plotid).log"
+        $logofallplots = "C:\ChiaStuff\Logofallplots.txt"
+        $windowtitle = "$($plotname) $($datestamp) - Active Plotter"
         $destinationfolder = $DestFolder[$plot]        
-        
+        $StartedLog = "Started $($plotid) on $($pleasantdate)"
        
         <# This is the main thing starting plotting #>
-        <#New>
+        <#New - Testing trying to start plots in chia.exe process directly instead of in new powershell window>
+        --Struggling to get this to give me the way to ID the chia processes or output the logs to understandable files. 
+
             $chiaProcess = Start-process chia.exe -ArgumentList "plots create -k $($k) -n 1 -b 4000 -r 2 -u 128 -t $($temppath) -d $($DestinationFolder)" -PassThru -RedirectStandardOutput $logpath -NoNewWindow
             $ChiaProcess.i = "This is my window title"
             $chiaProcess.Id
@@ -115,11 +118,13 @@ for ($group = $FirstGroupNumber; $group -le 999999999; $group++){   #  For each 
             stop-process -id $chiaprocess.Id
             "Stopped!"
             exit
-        <#/New>
+        <#/New#>
+        
+        Add-Content $logofallplots $StartedLog
 
-        <# Old#>
+        <# Start Chia Plotting in new named Powershell Window, and then exit#>
         $chiaProcess = Start-Process -FilePath powershell -PassThru -ArgumentList "-noExit
-                        `$host.ui.RawUI.WindowTitle = 'Plotting $($windowtitle)'
+                        `$host.ui.RawUI.WindowTitle = '$($windowtitle)'
                         ''
                         '$($plotname)'
                         ''
@@ -130,6 +135,8 @@ for ($group = $FirstGroupNumber; $group -le 999999999; $group++){   #  For each 
                         'Started on $($pleasantdate)'
                         ''
                         chia.exe plots create -k $($k) -n 1 -b 4000 -r 2 -u 128 -t $($temppath) -d $($DestinationFolder) | Tee-Object -FilePath $($logpath)
+                        
+                        Add-Content $logofallplots 'Completed $($plotid) on $(get-date -format 'dddd, MMM dd, hh:mm tt, yyyy')'
                         start-sleep -seconds 60
                         Exit
                         "
